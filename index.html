@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ค้นหาข้อมูลโภชนาการจากบาร์โค้ด</title>
+  <!-- โหลดฟอนต์ภาษาไทยที่อ่านง่ายและทันสมัย -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- โหลดไลบรารี html5-qrcode สำหรับสแกนบาร์โค้ดผ่านกล้อง -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js" defer></script>
+  <style>
+    /* ตัวแปรสีและค่าเริ่มต้นของระบบออกแบบ (Design Tokens) */
+    :root {
+      --bg-page: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-subtle: #f8fafc;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --accent: #059669;
+      --accent-hover: #047857;
+      --accent-light: #ecfdf5;
+      --accent-border: #a7f3d0;
+      --border-color: #e2e8f0;
+      --error-bg: #fef2f2;
+      --error-text: #b91c1c;
+      --error-border: #fecaca;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -6px rgba(15, 23, 42, 0.04);
+      --radius-lg: 20px;
+      --radius-md: 12px;
+      --radius-pill: 9999px;
+    }
+
+    /* รีเซ็ตพื้นฐานและป้องกันการล้นแนวนอนบนมือถือ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      overflow-x: hidden;
+      font-family: 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* โครงสร้างหลักแบบ Mobile-first */
+    .app-wrapper {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px 40px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ส่วนหัวของหน้าเว็บ */
+    .header {
+      text-align: center;
+      padding-top: 8px;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: var(--accent-light);
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      margin-bottom: 10px;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .header p {
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+    }
+
+    /* การ์ดค้นหา */
+    .card {
+      background-color: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .search-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    /* กำหนด font-size: 16px อย่างชัดเจนเพื่อป้องกันการซูมอัตโนมัติบน iOS */
+    .barcode-input {
+      width: 100%;
+      height: 50px;
+      padding: 0 42px 0 16px;
+      font-family: inherit;
+      font-size: 16px;
+      color: var(--text-primary);
+      background-color: var(--bg-subtle);
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+
+    .barcode-input::placeholder {
+      color: #94a3b8;
+      font-size: 15px;
+    }
+
+    .barcode-input:focus {
+      outline: none;
+      background-color: #ffffff;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+    }
+
+    /* ปุ่มล้างข้อความในช่องกรอก */
+    .clear-btn {
+      position: absolute;
+      right: 10px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 50%;
+      background-color: #e2e8f0;
+      color: var(--text-secondary);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.15s ease;
+    }
+
+    .clear-btn.visible {
+      display: flex;
+    }
+
+    .clear-btn:hover {
+      background-color: #cbd5e1;
+      color: var(--text-primary);
+    }
+
+    /* ปุ่มค้นหาขนาดเหมาะสำหรับนิ้วแตะบนมือถือ */
+    .search-btn {
+      width: 100%;
+      height: 50px;
+      padding: 0 24px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #ffffff;
+      background-color: var(--accent);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+    }
+
+    .search-btn:hover:not(:disabled) {
+      background-color: var(--accent-hover);
+    }
+
+    .search-btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .search-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    /* แถบปุ่มสแกนบาร์โค้ดด้วยกล้อง */
+    .scan-actions {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .scan-btn {
+      width: 100%;
+      min-height: 48px;
+      padding: 10px 18px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--accent-hover);
+      background-color: var(--accent-light);
+      border: 1.5px solid var(--accent-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+    }
+
+    .scan-btn:hover:not(:disabled) {
+      background-color: #d1fae5;
+      border-color: var(--accent);
+    }
+
+    .scan-btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .scan-btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .scan-btn.next-scan-btn {
+      color: #ffffff;
+      background-color: #0284c7;
+      border-color: #0284c7;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+    }
+
+    .scan-btn.next-scan-btn:hover:not(:disabled) {
+      background-color: #0369a1;
+      border-color: #0369a1;
+    }
+
+    /* กล่องแสดงภาพจากกล้องสแกนบาร์โค้ด */
+    .scanner-panel {
+      margin-top: 14px;
+      padding: 14px;
+      background-color: var(--bg-subtle);
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+      animation: fadeIn 0.25s ease;
+    }
+
+    .scanner-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .scanner-status-text {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .live-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background-color: #ef4444;
+      display: inline-block;
+      animation: pulseDot 1.2s infinite;
+    }
+
+    .close-camera-btn {
+      font-family: inherit;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--error-text);
+      background-color: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: var(--radius-pill);
+      padding: 5px 12px;
+      min-height: 32px;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .close-camera-btn:hover {
+      background-color: #fee2e2;
+    }
+
+    .qr-reader-viewport {
+      width: 100%;
+      min-height: 220px;
+      border-radius: 10px;
+      overflow: hidden;
+      background-color: #0f172a;
+      border: 1px solid #cbd5e1;
+    }
+
+    .qr-reader-viewport video {
+      width: 100% !important;
+      height: auto !important;
+      display: block;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    .scanner-hint {
+      margin-top: 8px;
+      font-size: 0.78125rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* กล่องแจ้งเตือนวิธีแก้ไขเมื่อเปิดกล้องไม่ได้ */
+    .camera-error-box {
+      margin-top: 14px;
+      padding: 16px;
+      background-color: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: var(--radius-md);
+      color: var(--error-text);
+      animation: fadeIn 0.25s ease;
+    }
+
+    .camera-error-title {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .camera-error-desc {
+      font-size: 0.875rem;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .camera-error-steps {
+      padding-left: 20px;
+      font-size: 0.84375rem;
+      line-height: 1.6;
+      color: #7f1d1d;
+    }
+
+    .camera-error-steps li {
+      margin-bottom: 4px;
+    }
+
+    /* ส่วนปุ่มบาร์โค้ดตัวอย่าง */
+    .samples-section {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border-color);
+    }
+
+    .samples-title {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .samples-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .sample-chip {
+      font-family: inherit;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-pill);
+      padding: 6px 12px;
+      min-height: 36px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .sample-chip:hover {
+      background-color: var(--accent-light);
+      border-color: var(--accent-border);
+      color: var(--accent-hover);
+    }
+
+    /* กล่องแสดงสถานะ (กำลังค้นหา / ไม่พบสินค้า / แจ้งเตือน) */
+    .status-box {
+      border-radius: var(--radius-lg);
+      padding: 28px 20px;
+      text-align: center;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      animation: fadeIn 0.25s ease;
+    }
+
+    .status-box.error {
+      background-color: var(--error-bg);
+      border-color: var(--error-border);
+      color: var(--error-text);
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3.5px solid var(--accent-light);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      margin: 0 auto 12px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .status-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .status-desc {
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+    }
+
+    .status-box.error .status-desc {
+      color: var(--error-text);
+      opacity: 0.9;
+    }
+
+    /* การ์ดแสดงผลข้อมูลสินค้า */
+    .result-card {
+      background-color: var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      animation: slideUp 0.3s ease;
+    }
+
+    .product-header {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--border-color);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    /* กรอบรูปสินค้า หรือกล่อง "-" กรณีไม่มีรูป */
+    .product-image-box {
+      width: 132px;
+      height: 132px;
+      flex-shrink: 0;
+      border-radius: 16px;
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .product-image-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .no-image-placeholder {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-subtle);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .product-meta {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .barcode-tag {
+      display: inline-block;
+      align-self: center;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      background-color: #e2e8f0;
+      padding: 2px 10px;
+      border-radius: var(--radius-pill);
+      letter-spacing: 0.03em;
+    }
+
+    .product-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .product-brand {
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+    }
+
+    .product-brand span {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* ส่วนตารางค่าโภชนาการต่อ 100 กรัม */
+    .nutrition-section {
+      padding: 20px;
+    }
+
+    .nutrition-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .nutrition-title {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .per-100g-badge {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--accent-hover);
+      background-color: var(--accent-light);
+      border: 1px solid var(--accent-border);
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      white-space: nowrap;
+    }
+
+    .nutrition-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .nutrition-table tr {
+      border-bottom: 1px solid var(--border-color);
+      transition: background-color 0.15s ease;
+    }
+
+    .nutrition-table tr:last-child {
+      border-bottom: none;
+    }
+
+    .nutrition-table tr:nth-child(even) {
+      background-color: var(--bg-subtle);
+    }
+
+    .nutrition-table td {
+      padding: 13px 16px;
+      font-size: 0.9375rem;
+    }
+
+    .nutrient-name {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .nutrient-sub {
+      padding-left: 28px !important;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .nutrient-value {
+      text-align: right;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .nutrient-value.missing {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* จัดเรียงค่าตัวเลข ป้ายสี และหมายเหตุให้สวยงามบนจอมือถือ */
+    .nutrient-value-group {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 6px 8px;
+    }
+
+    .nutrient-note {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-top: 2px;
+      white-space: normal;
+    }
+
+    /* ป้ายสีแสดงระดับค่าโภชนาการ (Traffic-light Badges) */
+    .traffic-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.4;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge-low {
+      background-color: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
+    }
+
+    .badge-medium {
+      background-color: #fef9c3;
+      color: #854d0e;
+      border-color: #fde047;
+    }
+
+    .badge-high {
+      background-color: #fee2e2;
+      color: #991b1b;
+      border-color: #fca5a5;
+    }
+
+    /* คำอธิบายสัญลักษณ์สีด้านล่างตาราง */
+    .traffic-legend {
+      margin-top: 14px;
+      padding: 10px 14px;
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px 10px;
+      text-align: center;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .legend-dot.low {
+      background-color: #22c55e;
+      border: 1px solid #15803d;
+    }
+
+    .legend-dot.medium {
+      background-color: #eab308;
+      border: 1px solid #a16207;
+    }
+
+    .legend-dot.high {
+      background-color: #ef4444;
+      border: 1px solid #b91c1c;
+    }
+
+    .legend-sep {
+      color: #cbd5e1;
+    }
+
+    .footer {
+      margin-top: auto;
+      padding-top: 24px;
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ปรับเลย์เอาต์สำหรับหน้าจอแท็บเล็ตและเดสก์ท็อป (640px ขึ้นไป) */
+    @media (min-width: 640px) {
+      .app-wrapper {
+        padding: 36px 24px 48px;
+      }
+
+      .header h1 {
+        font-size: 1.75rem;
+      }
+
+      .card {
+        padding: 24px;
+      }
+
+      .search-group {
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .search-btn {
+        width: auto;
+        min-width: 124px;
+        flex-shrink: 0;
+      }
+
+      .product-header {
+        flex-direction: row;
+        text-align: left;
+        align-items: center;
+        padding: 24px;
+        gap: 20px;
+      }
+
+      .barcode-tag {
+        align-self: flex-start;
+      }
+
+      .nutrition-section {
+        padding: 24px;
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulseDot {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.4;
+        transform: scale(0.85);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-wrapper">
+    <main class="container">
+      <!-- ส่วนหัวของแอปพลิเคชัน -->
+      <header class="header">
+        <div class="header-badge">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 5v14" />
+            <path d="M8 5v14" />
+            <path d="M12 5v14" />
+            <path d="M17 5v14" />
+            <path d="M21 5v14" />
+          </svg>
+          <span>ฐานข้อมูลอาหารและโภชนาการ</span>
+        </div>
+        <h1>ค้นหาข้อมูลโภชนาการจากบาร์โค้ด</h1>
+        <p>ตรวจสอบพลังงาน น้ำตาล ไขมัน และเกลือ ต่อปริมาณ 100 กรัม</p>
+      </header>
+
+      <!-- การ์ดฟอร์มกรอกเลขบาร์โค้ด -->
+      <section class="card" aria-label="ฟอร์มค้นหาบาร์โค้ด">
+        <form id="search-form" novalidate>
+          <label for="barcode-input" class="form-label">เลขบาร์โค้ดสินค้า</label>
+          <div class="search-group">
+            <div class="input-wrapper">
+              <input
+                type="text"
+                id="barcode-input"
+                class="barcode-input"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="off"
+                placeholder="กรอกเลขบาร์โค้ด เช่น 3017620422003"
+                aria-label="กรอกเลขบาร์โค้ดสินค้า"
+              />
+              <button
+                type="button"
+                id="clear-btn"
+                class="clear-btn"
+                aria-label="ล้างเลขบาร์โค้ด"
+                title="ล้างข้อมูล"
+              >
+                &times;
+              </button>
+            </div>
+            <button type="submit" id="search-btn" class="search-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <span>ค้นหา</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- ปุ่มเปิดกล้องสแกนและปุ่มสแกนชิ้นถัดไป -->
+        <div class="scan-actions">
+          <button type="button" id="open-camera-btn" class="scan-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+            <span>เปิดกล้องสแกน</span>
+          </button>
+
+          <button type="button" id="next-scan-btn" class="scan-btn next-scan-btn hidden">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+              <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+              <line x1="7" y1="12" x2="17" y2="12" />
+            </svg>
+            <span>สแกนชิ้นถัดไป</span>
+          </button>
+        </div>
+
+        <!-- พื้นที่แสดงกล้องสแกนบาร์โค้ด -->
+        <div id="scanner-panel" class="scanner-panel hidden" aria-live="polite">
+          <div class="scanner-panel-header">
+            <span class="scanner-status-text">
+              <span class="live-dot" aria-hidden="true"></span>
+              <span id="scanner-status-label">เล็งกล้องไปที่บาร์โค้ดสินค้า</span>
+            </span>
+            <button type="button" id="close-camera-btn" class="close-camera-btn">
+              ปิดกล้อง
+            </button>
+          </div>
+          <div id="qr-reader" class="qr-reader-viewport"></div>
+          <div class="scanner-hint">
+            รองรับบาร์โค้ดมาตรฐาน EAN-13, EAN-8, UPC-A และ UPC-E
+          </div>
+        </div>
+
+        <!-- พื้นที่แสดงข้อความแนะนำวิธีแก้หากเปิดกล้องไม่ได้ -->
+        <div id="camera-error-area" class="hidden" role="alert"></div>
+
+        <!-- ปุ่มบาร์โค้ดตัวอย่างสำหรับกดทดลอง -->
+        <div class="samples-section">
+          <div class="samples-title">กดเลือกบาร์โค้ดตัวอย่างเพื่อทดลองค้นหา:</div>
+          <div class="samples-list">
+            <button type="button" class="sample-chip" data-barcode="3017620422003">
+              3017620422003 (นูเทลล่า)
+            </button>
+            <button type="button" class="sample-chip" data-barcode="5449000000996">
+              5449000000996 (โคคา-โคล่า)
+            </button>
+            <button type="button" class="sample-chip" data-barcode="7622210449283">
+              7622210449283 (โอรีโอ)
+            </button>
+            <button type="button" class="sample-chip" data-barcode="3274080005003">
+              3274080005003 (น้ำแร่เอเวียง)
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- พื้นที่แสดงสถานะการค้นหาและผลลัพธ์ -->
+      <section id="result-area" aria-live="polite"></section>
+    </main>
+
+    <footer class="footer">
+      ข้อมูลโภชนาการอ้างอิงจากฐานข้อมูลเปิด Open Food Facts
+    </footer>
+  </div>
+
+  <script>
+    // เกณฑ์ระดับสารอาหารต่อ 100 กรัม (สามารถแก้ไขตัวเลขเกณฑ์ได้ที่นี่)
+    const LIMITS = {
+      sugars: { low: 5, high: 22.5 },        // น้ำตาล: ต่ำ ≤ 5, สูง > 22.5
+      fat: { low: 3, high: 17.5 },           // ไขมัน: ต่ำ ≤ 3, สูง > 17.5
+      saturatedFat: { low: 1.5, high: 5 },   // ไขมันอิ่มตัว: ต่ำ ≤ 1.5, สูง > 5
+      salt: { low: 0.3, high: 1.5 }          // เกลือ: ต่ำ ≤ 0.3, สูง > 1.5
+    };
+
+    (function () {
+      // อ้างอิงอิลิเมนต์หลักในหน้าเว็บ
+      const searchForm = document.getElementById('search-form');
+      const barcodeInput = document.getElementById('barcode-input');
+      const clearBtn = document.getElementById('clear-btn');
+      const searchBtn = document.getElementById('search-btn');
+      const resultArea = document.getElementById('result-area');
+      const sampleChips = document.querySelectorAll('.sample-chip');
+
+      // อ้างอิงอิลิเมนต์ระบบกล้องสแกนบาร์โค้ด
+      const openCameraBtn = document.getElementById('open-camera-btn');
+      const nextScanBtn = document.getElementById('next-scan-btn');
+      const scannerPanel = document.getElementById('scanner-panel');
+      const scannerStatusLabel = document.getElementById('scanner-status-label');
+      const closeCameraBtn = document.getElementById('close-camera-btn');
+      const cameraErrorArea = document.getElementById('camera-error-area');
+
+      // ตัวแปรควบคุมสถานะการทำงานของกล้องและป้องกันการอ่านซ้ำ
+      let html5QrCodeInstance = null;
+      let isScannerRunning = false;
+      let isHandlingScan = false;
+
+      /**
+       * แสดงข้อความแจ้งเตือนและวิธีแก้ไขเมื่อไม่สามารถเปิดกล้องได้
+       */
+      function renderCameraError(error) {
+        const errorName = error && error.name ? String(error.name) : '';
+        const errorMsg = error && error.message ? String(error.message).toLowerCase() : '';
+
+        let headline = 'ไม่สามารถเปิดกล้องสแกนได้';
+        let detail = 'เบราว์เซอร์ไม่สามารถเข้าถึงกล้องของคุณได้ กรุณาลองแก้ไขตามวิธีต่อไปนี้:';
+        let steps = [
+          'ตรวจสอบว่าได้กด "อนุญาต" (Allow) ให้เว็บไซต์เข้าถึงกล้องแล้ว',
+          'หากเคยกดบล็อกไว้ ให้แตะไอคอนรูปกุญแจหรือตัวตั้งค่าบนแถบที่อยู่ด้านบน > เปิดสิทธิ์ "กล้อง" > แล้วรีเฟรชหน้าเว็บ',
+          'เปิดใช้งานผ่าน HTTPS หรือเปิดด้วยเบราว์เซอร์หลักโดยตรง (เช่น Chrome หรือ Safari) แทนการเปิดผ่านแอปแชท',
+          'ปิดแอปพลิเคชันหรือแท็บอื่นที่กำลังเปิดใช้งานกล้องอยู่ แล้วกดลองใหม่อีกครั้ง',
+          'หรือพิมพ์เลขบาร์โค้ดในช่องด้านบนเพื่อค้นหาได้ทันที'
+        ];
+
+        if (errorName === 'LibraryNotLoaded') {
+          headline = 'ไม่สามารถโหลดระบบสแกนบาร์โค้ดได้';
+          detail = 'ไม่สามารถเชื่อมต่อไลบรารีกล้องสแกนจากอินเทอร์เน็ตได้';
+          steps = [
+            'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณให้พร้อมใช้งาน',
+            'กดรีเฟรชหน้าเว็บอีกครั้งแล้วลองกดปุ่ม "เปิดกล้องสแกน"',
+            'ระหว่างนี้คุณสามารถพิมพ์เลขบาร์โค้ดในช่องด้านบนเพื่อค้นหาได้ตามปกติ'
+          ];
+        } else if (errorName === 'InsecureContextOrUnsupported') {
+          headline = 'เบราว์เซอร์ไม่อนุญาตให้เปิดกล้องในหน้านี้';
+          detail = 'การเปิดกล้องจำเป็นต้องทำงานบนการเชื่อมต่อที่ปลอดภัย (HTTPS) และเบราว์เซอร์ที่รองรับ';
+          steps = [
+            'ตรวจสอบว่าลิงก์เว็บไซต์ขึ้นต้นด้วย https:// (หรือเปิดบน localhost)',
+            'หากเปิดลิงก์จากในแอป LINE หรือ Facebook ให้กดเมนูมุมขวาบนแล้วเลือก "เปิดในเบราว์เซอร์" (Chrome / Safari)',
+            'หรือพิมพ์เลขบาร์โค้ดในช่องด้านบนเพื่อค้นหาแทน'
+          ];
+        } else if (
+          errorName === 'NotAllowedError' ||
+          errorName === 'PermissionDeniedError' ||
+          errorMsg.includes('permission') ||
+          errorMsg.includes('denied')
+        ) {
+          headline = 'ไม่ได้รับอนุญาตให้ใช้งานกล้อง';
+          detail = 'คุณหรือเบราว์เซอร์ได้ปฏิเสธการเข้าถึงกล้องสำหรับเว็บไซต์นี้';
+          steps = [
+            'แตะไอคอนรูปกุญแจหรือไอคอนตั้งค่าข้างช่อง URL ด้านบนของเบราว์เซอร์',
+            'เข้าไปที่เมนู "สิทธิ์" (Permissions) หรือ "การตั้งค่าเว็บไซต์" (Site Settings)',
+            'เปลี่ยนสิทธิ์ของ "กล้อง" (Camera) เป็น "อนุญาต" (Allow)',
+            'รีเฟรชหน้าเว็บแล้วกดปุ่ม "เปิดกล้องสแกน" อีกครั้ง'
+          ];
+        } else if (
+          errorName === 'NotFoundError' ||
+          errorName === 'DevicesNotFoundError' ||
+          errorMsg.includes('not found') ||
+          errorMsg.includes('requested device not found')
+        ) {
+          headline = 'ไม่พบอุปกรณ์กล้อง';
+          detail = 'ไม่พบกล้องที่พร้อมใช้งานบนอุปกรณ์เครื่องนี้';
+          steps = [
+            'ตรวจสอบว่าอุปกรณ์ของคุณมีกล้องและไม่ได้ปิดการใช้งานกล้องในระบบ',
+            'หากใช้คอมพิวเตอร์หรือโน้ตบุ๊ก ตรวจสอบว่าได้เชื่อมต่อเว็บแคมเรียบร้อยแล้ว',
+            'คุณสามารถพิมพ์เลขบาร์โค้ดลงในช่องด้านบนเพื่อค้นหาสินค้าแทนได้ทันที'
+          ];
+        } else if (
+          errorName === 'NotReadableError' ||
+          errorName === 'TrackStartError' ||
+          errorMsg.includes('could not start video source') ||
+          errorMsg.includes('in use')
+        ) {
+          headline = 'กล้องกำลังถูกใช้งานโดยแอปอื่นอยู่';
+          detail = 'ไม่สามารถเข้าถึงกล้องได้เนื่องจากมีโปรแกรมอื่นกำลังเปิดกล้องค้างไว้';
+          steps = [
+            'ปิดแอปพลิเคชันถ่ายรูป วิดีโอคอล หรือแท็บเบราว์เซอร์อื่นที่กำลังใช้กล้องอยู่',
+            'แล้วกลับมาที่หน้านี้และกดปุ่ม "เปิดกล้องสแกน" ใหม่อีกครั้ง'
+          ];
+        }
+
+        const stepsHtml = steps.map((step) => `<li>${step}</li>`).join('');
+        cameraErrorArea.innerHTML = `
+          <div class="camera-error-box">
+            <div class="camera-error-title">${headline}</div>
+            <div class="camera-error-desc">${detail}</div>
+            <ol class="camera-error-steps">${stepsHtml}</ol>
+          </div>
+        `;
+        cameraErrorArea.classList.remove('hidden');
+      }
+
+      /**
+       * ซ่อนกล่องแจ้งเตือนข้อผิดพลาดของกล้อง
+       */
+      function clearCameraError() {
+        cameraErrorArea.innerHTML = '';
+        cameraErrorArea.classList.add('hidden');
+      }
+
+      /**
+       * สั่นเครื่องเบาๆ เมื่อสแกนบาร์โค้ดสำเร็จ (รองรับเฉพาะอุปกรณ์ที่เปิดให้สั่นได้)
+       */
+      function vibrateDevice() {
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          try {
+            navigator.vibrate(120);
+          } catch (err) {
+            // ข้ามหากอุปกรณ์หรือเบราว์เซอร์ไม่รองรับการสั่น
+          }
+        }
+      }
+
+      /**
+       * หยุดการทำงานของกล้องสแกนและคืนทรัพยากรอย่างปลอดภัย
+       */
+      async function stopScanner() {
+        if (html5QrCodeInstance && isScannerRunning) {
+          try {
+            await html5QrCodeInstance.stop();
+          } catch (err) {
+            // ข้ามข้อผิดพลาดกรณีกล้องถูกหยุดไปแล้ว
+          }
+          try {
+            html5QrCodeInstance.clear();
+          } catch (err) {
+            // ข้ามข้อผิดพลาดการล้าง DOM ของไลบรารี
+          }
+        }
+        isScannerRunning = false;
+        scannerPanel.classList.add('hidden');
+        openCameraBtn.disabled = false;
+      }
+
+      /**
+       * เริ่มเปิดกล้องหลังเพื่อสแกนบาร์โค้ด (EAN-13, EAN-8, UPC-A, UPC-E)
+       */
+      async function startScanner() {
+        clearCameraError();
+
+        // ตรวจสอบว่าไลบรารี html5-qrcode โหลดพร้อมใช้งานแล้ว
+        if (typeof window.Html5Qrcode === 'undefined' || typeof window.Html5QrcodeSupportedFormats === 'undefined') {
+          renderCameraError({ name: 'LibraryNotLoaded' });
+          return;
+        }
+
+        // ตรวจสอบว่าเบราว์เซอร์รองรับ MediaDevices API (ต้องเป็น HTTPS หรือ localhost)
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+          renderCameraError({ name: 'InsecureContextOrUnsupported' });
+          return;
+        }
+
+        // หากกำลังเปิดกล้องอยู่ให้หยุดก่อนเริ่มใหม่
+        if (isScannerRunning) {
+          await stopScanner();
+        }
+
+        isHandlingScan = false;
+        openCameraBtn.disabled = true;
+        nextScanBtn.classList.add('hidden');
+        scannerStatusLabel.textContent = 'กำลังเปิดกล้อง...';
+        scannerPanel.classList.remove('hidden');
+
+        try {
+          // กำหนดรูปแบบบาร์โค้ดที่รองรับเฉพาะ EAN-13, EAN-8, UPC-A และ UPC-E
+          const supportedFormats = [
+            window.Html5QrcodeSupportedFormats.EAN_13,
+            window.Html5QrcodeSupportedFormats.EAN_8,
+            window.Html5QrcodeSupportedFormats.UPC_A,
+            window.Html5QrcodeSupportedFormats.UPC_E
+          ];
+
+          html5QrCodeInstance = new window.Html5Qrcode('qr-reader', {
+            formatsToSupport: supportedFormats,
+            verbose: false
+          });
+
+          const scanConfig = {
+            fps: 10,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const width = Math.max(Math.min(Math.floor(viewfinderWidth * 0.85), 320), 200);
+              const height = Math.max(Math.min(Math.floor(viewfinderHeight * 0.45), 150), 100);
+              return { width, height };
+            }
+          };
+
+          // เรียกใช้กล้องหลัง (facingMode: "environment")
+          await html5QrCodeInstance.start(
+            { facingMode: 'environment' },
+            scanConfig,
+            async (decodedText) => {
+              // ป้องกันการอ่านซ้ำซ้อนระหว่างที่กำลังหยุดกล้อง
+              if (isHandlingScan) {
+                return;
+              }
+              isHandlingScan = true;
+
+              const scannedCode = String(decodedText || '').trim();
+
+              // 1. สั่นเครื่องแจ้งเตือน
+              vibrateDevice();
+
+              // 2. หยุดกล้องทันที
+              await stopScanner();
+
+              // 3. แสดงปุ่ม "สแกนชิ้นถัดไป" และซ่อนปุ่มเปิดกล้องเดิมชั่วคราวเพื่อให้กดสะดวก
+              openCameraBtn.classList.add('hidden');
+              nextScanBtn.classList.remove('hidden');
+
+              // 4. นำเลขที่สแกนได้ใส่ลงช่องพิมพ์เลข และค้นหาสินค้าเหมือนการพิมพ์เลข
+              barcodeInput.value = scannedCode;
+              toggleClearButton();
+              fetchProductByBarcode(scannedCode);
+            },
+            () => {
+              // ไม่พบตัวบาร์โค้ดในเฟรมปัจจุบัน (ทำงานต่อเนื่องโดยไม่ต้องแจ้งเตือน)
+            }
+          );
+
+          isScannerRunning = true;
+          scannerStatusLabel.textContent = 'เล็งกล้องไปที่บาร์โค้ดสินค้า';
+        } catch (err) {
+          isScannerRunning = false;
+          scannerPanel.classList.add('hidden');
+          openCameraBtn.disabled = false;
+          openCameraBtn.classList.remove('hidden');
+          renderCameraError(err);
+        }
+      }
+
+      /**
+       * ตรวจสอบว่าค่าที่ได้รับเป็นตัวเลขที่ใช้งานได้จริงหรือไม่ (รองรับค่า 0)
+       */
+      function hasValidValue(value) {
+        if (value === null || value === undefined || value === '') {
+          return false;
+        }
+        const num = Number(value);
+        return Number.isFinite(num);
+      }
+
+      /**
+       * จัดรูปแบบตัวเลขให้สวยงาม ตัดเลขศูนย์ทศนิยมส่วนเกินออก
+       */
+      function formatNumber(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          return '-';
+        }
+        return String(Number(num.toFixed(3)));
+      }
+
+      /**
+       * จัดรูปแบบข้อความทั่วไป หากไม่มีข้อมูลให้แสดง "-"
+       */
+      function formatText(value) {
+        if (typeof value === 'string' && value.trim().length > 0) {
+          return value.trim();
+        }
+        return '-';
+      }
+
+      /**
+       * สร้างกล่องแสดงรูปสินค้า หรือแสดง "-" หากไม่มีรูปหรือโหลดรูปไม่สำเร็จ
+       */
+      function createProductImageElement(product, altText) {
+        const imageBox = document.createElement('div');
+        imageBox.className = 'product-image-box';
+
+        const imageUrl =
+          product.image_front_url ||
+          product.image_url ||
+          product.image_front_small_url ||
+          '';
+
+        const renderFallback = () => {
+          imageBox.innerHTML = '';
+          const placeholder = document.createElement('div');
+          placeholder.className = 'no-image-placeholder';
+          placeholder.textContent = '-';
+          imageBox.appendChild(placeholder);
+        };
+
+        if (!imageUrl) {
+          renderFallback();
+          return imageBox;
+        }
+
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = altText !== '-' ? `รูปสินค้า ${altText}` : 'รูปสินค้า';
+        img.loading = 'lazy';
+        img.addEventListener('error', renderFallback);
+
+        imageBox.appendChild(img);
+        return imageBox;
+      }
+
+      /**
+       * แสดงสถานะกำลังโหลดข้อมูล
+       */
+      function renderLoading() {
+        resultArea.innerHTML = `
+          <div class="status-box" role="status">
+            <div class="spinner" aria-hidden="true"></div>
+            <div class="status-title">กำลังค้นหา...</div>
+            <div class="status-desc">กำลังดึงข้อมูลโภชนาการจากฐานข้อมูล</div>
+          </div>
+        `;
+      }
+
+      /**
+       * แสดงข้อความแจ้งเตือนหรือสถานะไม่พบสินค้า
+       */
+      function renderMessage(title, description, isError = false) {
+        const box = document.createElement('div');
+        box.className = isError ? 'status-box error' : 'status-box';
+        box.setAttribute('role', 'status');
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'status-title';
+        titleEl.textContent = title;
+
+        const descEl = document.createElement('div');
+        descEl.className = 'status-desc';
+        descEl.textContent = description;
+
+        box.appendChild(titleEl);
+        box.appendChild(descEl);
+
+        resultArea.innerHTML = '';
+        resultArea.appendChild(box);
+      }
+
+      /**
+       * ประเมินระดับสีของสารอาหารตามเกณฑ์ LIMITS (เขียว = ต่ำ, เหลือง = ปานกลาง, แดง = สูง)
+       */
+      function getTrafficBadge(value, limit) {
+        if (!hasValidValue(value) || !limit) {
+          return null;
+        }
+        // ปัดเศษทศนิยม 4 ตำแหน่งเพื่อป้องกันความคลาดเคลื่อนของเลขทศนิยมใน JavaScript (เช่น 0.12 * 2.5)
+        const num = Number(Number(value).toFixed(4));
+        if (num <= limit.low) {
+          return { text: 'ต่ำ', className: 'traffic-badge badge-low' };
+        }
+        if (num <= limit.high) {
+          return { text: 'ปานกลาง', className: 'traffic-badge badge-medium' };
+        }
+        return { text: 'สูง', className: 'traffic-badge badge-high' };
+      }
+
+      /**
+       * เตรียมรายการค่าโภชนาการต่อ 100 กรัม ทั้ง 5 รายการตามที่กำหนด
+       */
+      function getNutritionRows(nutriments) {
+        const safeNutriments = nutriments && typeof nutriments === 'object' ? nutriments : {};
+
+        // 1) พลังงาน: ใช้ energy-kcal_100g (kcal) ก่อน หากไม่มีให้แปลงจาก energy_100g (kJ หาร 4.184)
+        let energyDisplay = '-';
+        let energyMissing = true;
+        if (hasValidValue(safeNutriments['energy-kcal_100g'])) {
+          energyDisplay = `${formatNumber(safeNutriments['energy-kcal_100g'])} kcal`;
+          energyMissing = false;
+        } else if (hasValidValue(safeNutriments['energy_100g'])) {
+          const energyUnit = String(safeNutriments['energy_unit'] || '').toLowerCase();
+          const rawEnergy = Number(safeNutriments['energy_100g']);
+          const kcalValue = energyUnit === 'kcal' ? rawEnergy : rawEnergy / 4.184;
+          energyDisplay = `${formatNumber(kcalValue)} kcal`;
+          energyMissing = false;
+        }
+
+        // ฟังก์ชันช่วยจัดรูปแบบค่าหน่วย "กรัม" พร้อมป้ายสีตามเกณฑ์ LIMITS
+        const formatGramNutrient = (key, limit) => {
+          if (hasValidValue(safeNutriments[key])) {
+            const numericVal = Number(safeNutriments[key]);
+            return {
+              display: `${formatNumber(numericVal)} กรัม`,
+              missing: false,
+              badge: getTrafficBadge(numericVal, limit),
+              note: ''
+            };
+          }
+          return { display: '-', missing: true, badge: null, note: '' };
+        };
+
+        const sugars = formatGramNutrient('sugars_100g', LIMITS.sugars);
+        const fat = formatGramNutrient('fat_100g', LIMITS.fat);
+        const saturatedFat = formatGramNutrient('saturated-fat_100g', LIMITS.saturatedFat);
+
+        // 5) เกลือ: ใช้ salt_100g ก่อน หากไม่มีแต่มี sodium_100g ให้คำนวณ เกลือ = โซเดียม × 2.5
+        let salt = { display: '-', missing: true, badge: null, note: '' };
+        if (hasValidValue(safeNutriments['salt_100g'])) {
+          const saltVal = Number(safeNutriments['salt_100g']);
+          salt = {
+            display: `${formatNumber(saltVal)} กรัม`,
+            missing: false,
+            badge: getTrafficBadge(saltVal, LIMITS.salt),
+            note: ''
+          };
+        } else if (hasValidValue(safeNutriments['sodium_100g'])) {
+          const sodiumVal = Number(safeNutriments['sodium_100g']);
+          const calculatedSalt = sodiumVal * 2.5;
+          salt = {
+            display: `${formatNumber(calculatedSalt)} กรัม`,
+            missing: false,
+            badge: getTrafficBadge(calculatedSalt, LIMITS.salt),
+            note: 'คำนวณจากโซเดียม'
+          };
+        }
+
+        return [
+          {
+            label: 'พลังงาน',
+            value: energyDisplay,
+            missing: energyMissing,
+            badge: null,
+            note: '',
+            isSub: false
+          },
+          {
+            label: 'น้ำตาล',
+            value: sugars.display,
+            missing: sugars.missing,
+            badge: sugars.badge,
+            note: sugars.note,
+            isSub: false
+          },
+          {
+            label: 'ไขมัน',
+            value: fat.display,
+            missing: fat.missing,
+            badge: fat.badge,
+            note: fat.note,
+            isSub: false
+          },
+          {
+            label: 'ไขมันอิ่มตัว',
+            value: saturatedFat.display,
+            missing: saturatedFat.missing,
+            badge: saturatedFat.badge,
+            note: saturatedFat.note,
+            isSub: true
+          },
+          {
+            label: 'เกลือ',
+            value: salt.display,
+            missing: salt.missing,
+            badge: salt.badge,
+            note: salt.note,
+            isSub: false
+          }
+        ];
+      }
+
+      /**
+       * แสดงผลการ์ดข้อมูลสินค้าและตารางโภชนาการต่อ 100 กรัม
+       */
+      function renderProductCard(barcode, product) {
+        const productName = formatText(product.product_name_th || product.product_name);
+        const brandName = formatText(product.brands);
+        const nutritionRows = getNutritionRows(product.nutriments);
+
+        const card = document.createElement('article');
+        card.className = 'result-card';
+
+        // ส่วนข้อมูลหลักของสินค้า (รูปภาพ, ชื่อ, ยี่ห้อ)
+        const header = document.createElement('div');
+        header.className = 'product-header';
+
+        const imageBox = createProductImageElement(product, productName);
+
+        const meta = document.createElement('div');
+        meta.className = 'product-meta';
+
+        const barcodeTag = document.createElement('span');
+        barcodeTag.className = 'barcode-tag';
+        barcodeTag.textContent = `บาร์โค้ด: ${barcode}`;
+
+        const nameEl = document.createElement('h2');
+        nameEl.className = 'product-name';
+        nameEl.textContent = productName;
+
+        const brandEl = document.createElement('p');
+        brandEl.className = 'product-brand';
+        brandEl.append('ยี่ห้อ: ');
+        const brandValSpan = document.createElement('span');
+        brandValSpan.textContent = brandName;
+        brandEl.appendChild(brandValSpan);
+
+        meta.appendChild(barcodeTag);
+        meta.appendChild(nameEl);
+        meta.appendChild(brandEl);
+
+        header.appendChild(imageBox);
+        header.appendChild(meta);
+
+        // ส่วนตารางโภชนาการต่อ 100 กรัม
+        const nutritionSection = document.createElement('div');
+        nutritionSection.className = 'nutrition-section';
+
+        const nutritionHeader = document.createElement('div');
+        nutritionHeader.className = 'nutrition-header';
+
+        const nutritionTitle = document.createElement('h3');
+        nutritionTitle.className = 'nutrition-title';
+        nutritionTitle.textContent = 'คุณค่าทางโภชนาการ';
+
+        const per100gBadge = document.createElement('span');
+        per100gBadge.className = 'per-100g-badge';
+        per100gBadge.textContent = 'ต่อ 100 กรัม';
+
+        nutritionHeader.appendChild(nutritionTitle);
+        nutritionHeader.appendChild(per100gBadge);
+
+        const table = document.createElement('table');
+        table.className = 'nutrition-table';
+        const tbody = document.createElement('tbody');
+
+        nutritionRows.forEach((row) => {
+          const tr = document.createElement('tr');
+
+          const tdLabel = document.createElement('td');
+          tdLabel.className = row.isSub ? 'nutrient-name nutrient-sub' : 'nutrient-name';
+          tdLabel.textContent = row.label;
+
+          const tdValue = document.createElement('td');
+          tdValue.className = row.missing ? 'nutrient-value missing' : 'nutrient-value';
+
+          const valueGroup = document.createElement('div');
+          valueGroup.className = 'nutrient-value-group';
+
+          const valueText = document.createElement('span');
+          valueText.textContent = row.value;
+          valueGroup.appendChild(valueText);
+
+          // แสดงป้ายสีเฉพาะเมื่อมีค่าตัวเลข
+          if (row.badge) {
+            const badgeEl = document.createElement('span');
+            badgeEl.className = row.badge.className;
+            badgeEl.textContent = row.badge.text;
+            valueGroup.appendChild(badgeEl);
+          }
+
+          tdValue.appendChild(valueGroup);
+
+          // แสดงหมายเหตุเล็กๆ กรณีเกลือคำนวณมาจากโซเดียม
+          if (row.note) {
+            const noteEl = document.createElement('span');
+            noteEl.className = 'nutrient-note';
+            noteEl.textContent = `(${row.note})`;
+            tdValue.appendChild(noteEl);
+          }
+
+          tr.appendChild(tdLabel);
+          tr.appendChild(tdValue);
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+
+        // คำอธิบายสัญลักษณ์สีด้านล่างตาราง
+        const legend = document.createElement('div');
+        legend.className = 'traffic-legend';
+        legend.innerHTML = `
+          <span class="legend-item"><span class="legend-dot low" aria-hidden="true"></span>เขียว = ต่ำ</span>
+          <span class="legend-sep" aria-hidden="true">|</span>
+          <span class="legend-item"><span class="legend-dot medium" aria-hidden="true"></span>เหลือง = ปานกลาง</span>
+          <span class="legend-sep" aria-hidden="true">|</span>
+          <span class="legend-item"><span class="legend-dot high" aria-hidden="true"></span>แดง = สูง</span>
+        `;
+
+        nutritionSection.appendChild(nutritionHeader);
+        nutritionSection.appendChild(table);
+        nutritionSection.appendChild(legend);
+
+        card.appendChild(header);
+        card.appendChild(nutritionSection);
+
+        resultArea.innerHTML = '';
+        resultArea.appendChild(card);
+      }
+
+      /**
+       * เรียกใช้งาน Open Food Facts API v2 เพื่อค้นหาข้อมูลสินค้าจากเลขบาร์โค้ด
+       */
+      async function fetchProductByBarcode(rawBarcode) {
+        const barcode = rawBarcode.trim();
+
+        if (!barcode) {
+          renderMessage(
+            'กรุณากรอกเลขบาร์โค้ด',
+            'พิมพ์เลขบาร์โค้ดสินค้าหรือเลือกจากปุ่มตัวอย่างด้านบนก่อนกดค้นหา',
+            true
+          );
+          barcodeInput.focus();
+          return;
+        }
+
+        searchBtn.disabled = true;
+        renderLoading();
+
+        try {
+          const endpoint = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json`;
+          const response = await fetch(endpoint);
+
+          // Open Food Facts API v2 อาจส่ง HTTP 404 พร้อม JSON { status: 0 } เมื่อไม่พบสินค้า
+          let data = null;
+          try {
+            data = await response.json();
+          } catch (parseErr) {
+            data = null;
+          }
+
+          if (response.status === 404 || !data || data.status === 0 || !data.product) {
+            renderMessage(
+              'ไม่พบสินค้า',
+              `ไม่พบข้อมูลสินค้าสำหรับเลขบาร์โค้ด "${barcode}" ในฐานข้อมูล`
+            );
+            return;
+          }
+
+          if (!response.ok) {
+            throw new Error(`HTTP Error: ${response.status}`);
+          }
+
+          renderProductCard(barcode, data.product);
+        } catch (error) {
+          renderMessage(
+            'เกิดข้อผิดพลาดในการเชื่อมต่อ',
+            'ไม่สามารถดึงข้อมูลได้ในขณะนี้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่อีกครั้ง',
+            true
+          );
+        } finally {
+          searchBtn.disabled = false;
+        }
+      }
+
+      /**
+       * อัปเดตการแสดงปุ่มล้างข้อความในช่องกรอก
+       */
+      function toggleClearButton() {
+        if (barcodeInput.value.trim().length > 0) {
+          clearBtn.classList.add('visible');
+        } else {
+          clearBtn.classList.remove('visible');
+        }
+      }
+
+      // เหตุการณ์ส่งฟอร์ม (กดปุ่มค้นหา หรือกด Enter)
+      searchForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (isScannerRunning) {
+          await stopScanner();
+        }
+        fetchProductByBarcode(barcodeInput.value);
+      });
+
+      // เหตุการณ์พิมพ์ข้อความในช่องกรอก
+      barcodeInput.addEventListener('input', toggleClearButton);
+
+      // เหตุการณ์กดปุ่มล้างข้อความ
+      clearBtn.addEventListener('click', () => {
+        barcodeInput.value = '';
+        toggleClearButton();
+        resultArea.innerHTML = '';
+        barcodeInput.focus();
+      });
+
+      // เหตุการณ์กดปุ่ม "เปิดกล้องสแกน"
+      openCameraBtn.addEventListener('click', () => {
+        startScanner();
+      });
+
+      // เหตุการณ์กดปุ่ม "สแกนชิ้นถัดไป"
+      nextScanBtn.addEventListener('click', () => {
+        barcodeInput.value = '';
+        toggleClearButton();
+        resultArea.innerHTML = '';
+        startScanner();
+      });
+
+      // เหตุการณ์กดปุ่ม "ปิดกล้อง"
+      closeCameraBtn.addEventListener('click', async () => {
+        await stopScanner();
+        openCameraBtn.classList.remove('hidden');
+      });
+
+      // เหตุการณ์กดปุ่มบาร์โค้ดตัวอย่าง
+      sampleChips.forEach((chip) => {
+        chip.addEventListener('click', async () => {
+          if (isScannerRunning) {
+            await stopScanner();
+          }
+          const sampleBarcode = chip.getAttribute('data-barcode') || '';
+          barcodeInput.value = sampleBarcode;
+          toggleClearButton();
+          fetchProductByBarcode(sampleBarcode);
+        });
+      });
+
+      // ปิดกล้องอัตโนมัติเมื่อสลับแท็บหรือออกจากหน้าเว็บเพื่อประหยัดแบตเตอรี่
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && isScannerRunning) {
+          stopScanner();
+          openCameraBtn.classList.remove('hidden');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
